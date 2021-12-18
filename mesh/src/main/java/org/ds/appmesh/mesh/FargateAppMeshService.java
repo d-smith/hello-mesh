@@ -3,10 +3,8 @@ package org.ds.appmesh.mesh;
 import org.jetbrains.annotations.NotNull;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.Stack;
-import software.amazon.awscdk.regioninfo.RegionInfo;
 import software.amazon.awscdk.services.appmesh.*;
 import software.amazon.awscdk.services.ec2.Port;
-import software.amazon.awscdk.services.ec2.Protocol;
 import software.amazon.awscdk.services.ecr.IRepository;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.ecs.*;
@@ -18,7 +16,7 @@ import software.constructs.Construct;
 import java.util.List;
 import java.util.Map;
 
-public class Ec2AppMeshService extends Construct {
+public class FargateAppMeshService extends Construct {
     String serviceName;
     Integer portNumber;
     TaskDefinition taskDefinition;
@@ -27,10 +25,10 @@ public class Ec2AppMeshService extends Construct {
     VirtualNode virtualNode;
     VirtualService virtualService;
 
-    public Ec2AppMeshService(@NotNull Construct scope, @NotNull String id,
-                             Cluster cluster, Mesh mesh,
-                             Role taskRole, Role executionRole,
-                             ContainerDefinitionOptions appContainerOpts, Integer port) {
+    public FargateAppMeshService(@NotNull Construct scope, @NotNull String id,
+                                 Cluster cluster, Mesh mesh,
+                                 Role taskRole, Role executionRole,
+                                 ContainerDefinitionOptions appContainerOpts, Integer port) {
         super(scope, id);
 
         IRepository envoyRepo = Repository.fromRepositoryArn(this, "envoyRepo", "arn:aws:ecr:us-west-2:840364872350:repository/aws-appmesh-envoy");
@@ -145,7 +143,7 @@ public class Ec2AppMeshService extends Construct {
 
     }
 
-    public void connectToMeshService(Ec2AppMeshService appMeshService) {
+    public void connectToMeshService(FargateAppMeshService appMeshService) {
 
         this.fargateService.getConnections().allowTo(
                 appMeshService.fargateService,

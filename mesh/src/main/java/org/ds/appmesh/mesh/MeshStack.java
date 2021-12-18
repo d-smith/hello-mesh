@@ -2,12 +2,7 @@ package org.ds.appmesh.mesh;
 
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.appmesh.Mesh;
-import software.amazon.awscdk.services.ec2.InstanceClass;
-import software.amazon.awscdk.services.ec2.InstanceSize;
-import software.amazon.awscdk.services.ec2.InstanceType;
 import software.amazon.awscdk.services.ec2.Vpc;
-import software.amazon.awscdk.services.ecr.IRepository;
-import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddApplicationTargetsProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationListener;
@@ -19,7 +14,6 @@ import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 
-import java.awt.*;
 import java.util.List;
 import java.util.Map;
 // import software.amazon.awscdk.Duration;
@@ -68,7 +62,7 @@ public class MeshStack extends Stack {
                 .build();
 
 
-        Ec2AppMeshService nameService = new Ec2AppMeshService(this, "name",
+        FargateAppMeshService nameService = new FargateAppMeshService(this, "name",
                 cluster, mesh, taskRole, executionRole, nameContainerDefinitionOpts, 8080);
 
         ContainerDefinitionOptions greetingContainerDefinitionOpts = ContainerDefinitionOptions.builder()
@@ -78,7 +72,7 @@ public class MeshStack extends Stack {
                 .logging(AwsLogDriver.Builder.create().streamPrefix("app-mesh-greeting").build())
                 .build();
 
-        Ec2AppMeshService greetingService = new Ec2AppMeshService(this, "greeting",
+        FargateAppMeshService greetingService = new FargateAppMeshService(this, "greeting",
                 cluster, mesh, taskRole, executionRole, greetingContainerDefinitionOpts, 8080);
 
         ContainerDefinitionOptions helloContainerDefinitionsOpt = ContainerDefinitionOptions.builder()
@@ -91,7 +85,7 @@ public class MeshStack extends Stack {
                         "GREETING_ENDPOINT", "http://greeting.internal:8080"
                 ))
                 .build();
-        Ec2AppMeshService helloService = new Ec2AppMeshService(this,"hello",
+        FargateAppMeshService helloService = new FargateAppMeshService(this,"hello",
                 cluster, mesh, taskRole, executionRole, helloContainerDefinitionsOpt, 8080);
 
         helloService.connectToMeshService(nameService);
