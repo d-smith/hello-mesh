@@ -36,7 +36,6 @@ docker run --network hello-net  --env NAME_ENDPOINT=http://name:8080 --env GREET
 
 ## Next steps
 
-* Make a fargate version of this
 * Determine if the task and execution roles were needed
 * See about using less memory for the app containers. Note 128 was not enough
 for the springboot app containers (well, two of them...)

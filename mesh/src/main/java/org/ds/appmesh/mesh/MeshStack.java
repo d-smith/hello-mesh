@@ -49,17 +49,6 @@ public class MeshStack extends Stack {
 
         Mesh mesh = Mesh.Builder.create(this, "hello-mesh").build();
 
-        cluster.addCapacity("hello-capacity",
-                    AddCapacityOptions.builder()
-                            .instanceType(InstanceType.of(
-                                    InstanceClass.BURSTABLE3,
-                                    InstanceSize.XLARGE
-                            ))
-                            .minCapacity(3)
-                            .maxCapacity(3)
-                            .build()
-                );
-
         Role taskRole = IamComponents.createTaskIamRole(this);
         Role executionRole = IamComponents.createTaskExecutionIamRole(this);
 
@@ -121,7 +110,7 @@ public class MeshStack extends Stack {
         applicationListener.addTargets("hello", AddApplicationTargetsProps.builder()
                 .port(80)
                 .targets(List.of(
-                        helloService.ec2Service
+                        helloService.fargateService
                 ))
                 .build());
 

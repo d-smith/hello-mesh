@@ -23,7 +23,7 @@ public class Ec2AppMeshService extends Construct {
     Integer portNumber;
     TaskDefinition taskDefinition;
     ContainerDefinition applicationContainer;
-    Ec2Service ec2Service;
+    FargateService fargateService;
     VirtualNode virtualNode;
     VirtualService virtualService;
 
@@ -38,7 +38,7 @@ public class Ec2AppMeshService extends Construct {
         this.portNumber = port;
 
         this.taskDefinition = TaskDefinition.Builder.create(scope, serviceName + "-task-definition")
-                .compatibility(Compatibility.EC2)
+                .compatibility(Compatibility.EC2_AND_FARGATE)
                 .networkMode(NetworkMode.AWS_VPC)
                 .proxyConfiguration(
                         AppMeshProxyConfiguration.Builder.create()
@@ -56,6 +56,8 @@ public class Ec2AppMeshService extends Construct {
                 )
                 .taskRole(taskRole)
                 .executionRole(executionRole)
+                .memoryMiB("1024")
+                .cpu("512")
                 .build();
 
 
@@ -102,7 +104,7 @@ public class Ec2AppMeshService extends Construct {
                         .build()
         );
 
-        this.ec2Service  = Ec2Service.Builder.create(this, serviceName + "-service")
+        this.fargateService = FargateService.Builder.create(this, serviceName + "-service")
                 .cluster(cluster)
                 .desiredCount(2)
                 .taskDefinition(this.taskDefinition)
@@ -119,7 +121,7 @@ public class Ec2AppMeshService extends Construct {
         this.virtualNode = VirtualNode.Builder.create(this, serviceName + "-virtual-node")
                 .mesh(mesh)
                 .virtualNodeName(serviceName)
-                .serviceDiscovery(ServiceDiscovery.cloudMap(ec2Service.getCloudMapService()))
+                .serviceDiscovery(ServiceDiscovery.cloudMap(fargateService.getCloudMapService()))
                 .listeners(List.of(
                         VirtualNodeListener.http(HttpVirtualNodeListenerOptions.builder()
                                 .port(port)
@@ -144,15 +146,9 @@ public class Ec2AppMeshService extends Construct {
     }
 
     public void connectToMeshService(Ec2AppMeshService appMeshService) {
-        /*Port trafficPort = Port.Builder.create()
-                                .fromPort(appMeshService.portNumber)
-                                .toPort(8080)
-                                .protocol(Protocol.TCP)
-                                .build();
 
-         */
-        this.ec2Service.getConnections().allowTo(
-                appMeshService.ec2Service,
+        this.fargateService.getConnections().allowTo(
+                appMeshService.fargateService,
                 Port.tcp(8080),
                 "Inbound traffic from the app mesh enabled " + serviceName
         );
