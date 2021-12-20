@@ -20,4 +20,10 @@ public class GreetingController {
         int idx = (int) (Math.random() * greetings.length);
         return new ResponseEntity<>(greetings[idx], HttpStatus.OK);
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        logger.info("health endpoint called");
+        return new ResponseEntity<>("Up", HttpStatus.OK);
+    }
 }
