@@ -21,4 +21,10 @@ public class NameController {
         int idx = (int) (Math.random() * names.length);
         return new ResponseEntity<>(names[idx], HttpStatus.OK);
     }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        logger.info("health check called");
+        return new ResponseEntity<>("Up", HttpStatus.OK);
+    }
 }
