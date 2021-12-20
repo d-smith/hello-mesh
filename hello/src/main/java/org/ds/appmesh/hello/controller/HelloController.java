@@ -35,11 +35,18 @@ public class HelloController {
 
     @GetMapping("/hello")
     public ResponseEntity<String> hello() {
+        logger.info("get on /hello...");
         String name = getDataFromEndpoint(NAME_ENDPOINT, "/name", "some name");
         logger.info("got name {}", name);
         String greeting = getDataFromEndpoint(GREETING_ENDPOINT,"/greeting", "some greeting");
         logger.info("got greeting {}", greeting);
 
         return new ResponseEntity<>(greeting + ", " + name, HttpStatus.OK);
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        logger.info("get on /health...");
+        return new ResponseEntity<>("hello UP", HttpStatus.OK);
     }
 }
