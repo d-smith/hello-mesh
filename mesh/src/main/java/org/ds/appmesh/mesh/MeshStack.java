@@ -1,19 +1,26 @@
 package org.ds.appmesh.mesh;
 
 import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.services.appmesh.Mesh;
+import software.amazon.awscdk.services.appmesh.*;
+import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ecs.*;
+import software.amazon.awscdk.services.ecs.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddApplicationTargetsProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationListener;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.BaseApplicationListenerProps;
 import software.amazon.awscdk.services.iam.Role;
+import software.amazon.awscdk.services.route53.ARecord;
+import software.amazon.awscdk.services.route53.PrivateHostedZone;
+import software.amazon.awscdk.services.route53.RecordTarget;
+import software.amazon.awscdk.services.route53.targets.Route53RecordTarget;
 import software.amazon.awscdk.services.servicediscovery.NamespaceType;
 import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 // import software.amazon.awscdk.Duration;
@@ -28,7 +35,7 @@ public class MeshStack extends Stack {
         super(scope, id, props);
 
         Vpc vpc = Vpc.Builder.create(this, "hello-vpc")
-                .maxAzs(2)
+                .maxAzs(3)
                 .build();
 
         Cluster cluster = Cluster.Builder.create(this, "hello-cluster")
@@ -47,13 +54,14 @@ public class MeshStack extends Stack {
         Role executionRole = IamComponents.createTaskExecutionIamRole(this);
 
         HealthCheck healthCheck = HealthCheck.builder()
-                .command(List.of("curl localhost:8080/actuator/health"))
+                .command(List.of("curl localhost:8080/health"))
                 .startPeriod(Duration.seconds(10))
                 .interval(Duration.seconds(5))
                 .timeout(Duration.seconds(2))
                 .retries(3)
                 .build();
 
+        //Name service
         ContainerDefinitionOptions nameContainerDefinitionOpts = ContainerDefinitionOptions.builder()
                 .image(ContainerImage.fromRegistry("dasmith/name"))
                 .healthCheck(healthCheck)
@@ -65,6 +73,20 @@ public class MeshStack extends Stack {
         FargateAppMeshService nameService = new FargateAppMeshService(this, "name",
                 cluster, mesh, taskRole, executionRole, nameContainerDefinitionOpts, 8080);
 
+
+        //Name 2 service
+        ContainerDefinitionOptions name2ContainerDefinitionOpts = ContainerDefinitionOptions.builder()
+                .image(ContainerImage.fromRegistry("dasmith/name2"))
+                .healthCheck(healthCheck)
+                .memoryLimitMiB(512)
+                .logging(AwsLogDriver.Builder.create().streamPrefix("app-mesh-name2").build())
+                .build();
+
+
+        FargateAppMeshService name2Service = new FargateAppMeshService(this, "name2",
+                cluster, mesh, taskRole, executionRole, name2ContainerDefinitionOpts, 8080);
+
+        //Greeting service
         ContainerDefinitionOptions greetingContainerDefinitionOpts = ContainerDefinitionOptions.builder()
                 .image(ContainerImage.fromRegistry("dasmith/greeting"))
                 .healthCheck(healthCheck)
@@ -75,12 +97,15 @@ public class MeshStack extends Stack {
         FargateAppMeshService greetingService = new FargateAppMeshService(this, "greeting",
                 cluster, mesh, taskRole, executionRole, greetingContainerDefinitionOpts, 8080);
 
+        //Hello service
+
         ContainerDefinitionOptions helloContainerDefinitionsOpt = ContainerDefinitionOptions.builder()
                 .image(ContainerImage.fromRegistry("dasmith/hello"))
                 .healthCheck(healthCheck)
                 .memoryLimitMiB(512)
                 .logging(AwsLogDriver.Builder.create().streamPrefix("app-mesh-greeting").build())
                 .environment(Map.of(
+                        //"NAME_ENDPOINT", "http://nameproxy.internal:8080",
                         "NAME_ENDPOINT", "http://name.internal:8080",
                         "GREETING_ENDPOINT", "http://greeting.internal:8080"
                 ))
@@ -90,6 +115,8 @@ public class MeshStack extends Stack {
 
         helloService.connectToMeshService(nameService);
         helloService.connectToMeshService(greetingService);
+
+
 
         ApplicationLoadBalancer alb = ApplicationLoadBalancer.Builder.create(this, "alb")
                 .vpc(vpc)
@@ -106,6 +133,9 @@ public class MeshStack extends Stack {
                 .targets(List.of(
                         helloService.fargateService
                 ))
+                .healthCheck(software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck.builder()
+                        .path("/health")
+                        .build())
                 .build());
 
 
