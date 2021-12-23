@@ -26,11 +26,11 @@ public class EcsServices {
 
     public static ContainerDefinitionOptions createEnvoyContainerDef(MeshContext meshContext, String serviceName, String nodename) {
 
-        IRepository envoyRepo = Repository.fromRepositoryArn(meshContext.getScope(), "envoyRepo", "arn:aws:ecr:us-west-2:840364872350:repository/aws-appmesh-envoy");
+
 
         return ContainerDefinitionOptions.builder()
                 .containerName("envoy")
-                .image(ContainerImage.fromEcrRepository(envoyRepo, "v1.20.0.1-prod"))
+                .image(ContainerImage.fromEcrRepository(meshContext.getEnvoyRepo(), "v1.20.0.1-prod"))
                 .essential(true)
                 .environment(Map.of(
                         "APPMESH_VIRTUAL_NODE_NAME", "mesh/" + meshContext.getMesh().getMeshName() + "/virtualNode/" + nodename,
@@ -81,19 +81,17 @@ public class EcsServices {
                 .build();
     }
 
-    public static FargateService createNameService(MeshContext meshContext) {
-        String serviceName = "namesvc";
-        String nodeName = "namenode";
+    private static FargateService createService(MeshContext meshContext, String serviceName, String nodeName, String imageName) {
         TaskDefinition taskDefinition = createTaskDefinition(meshContext, serviceName);
 
         ContainerDefinitionOptions nameContainerDefinitionOpts = ContainerDefinitionOptions.builder()
-                .image(ContainerImage.fromRegistry("dasmith/name"))
+                .image(ContainerImage.fromRegistry(imageName))
                 .healthCheck(createContainerHealthCheck())
                 .memoryLimitMiB(512)
-                .logging(AwsLogDriver.Builder.create().streamPrefix("app-mesh-name").build())
+                .logging(AwsLogDriver.Builder.create().streamPrefix(serviceName).build())
                 .build();
 
-        ContainerDefinition nameContainer = taskDefinition.addContainer("name", nameContainerDefinitionOpts);
+        ContainerDefinition nameContainer = taskDefinition.addContainer(serviceName + "cont", nameContainerDefinitionOpts);
         nameContainer.addPortMappings(PortMapping.builder()
                 .containerPort(8080)
                 .hostPort(8080)
@@ -119,7 +117,14 @@ public class EcsServices {
                                 .build()
                 )
                 .build();
+    }
 
+    public static FargateService createNameService(MeshContext meshContext) {
+        return createService(meshContext, "namesvc", "namenode", "dasmith/name");
+    }
+
+    public static FargateService createName2Service(MeshContext meshContext) {
+        return createService(meshContext, "name2svc", "name2node", "dasmith/name2");
     }
 
 }

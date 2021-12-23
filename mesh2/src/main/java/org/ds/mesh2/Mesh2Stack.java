@@ -4,6 +4,8 @@ import software.amazon.awscdk.services.appmesh.Mesh;
 import software.amazon.awscdk.services.appmesh.VirtualNode;
 import software.amazon.awscdk.services.appmesh.VirtualService;
 import software.amazon.awscdk.services.ec2.Vpc;
+import software.amazon.awscdk.services.ecr.IRepository;
+import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.ecs.CloudMapNamespaceOptions;
 import software.amazon.awscdk.services.ecs.Cluster;
 import software.amazon.awscdk.services.ecs.FargateService;
@@ -53,9 +55,9 @@ public class Mesh2Stack extends Stack {
 
         Mesh mesh = Mesh.Builder.create(this, "hello-mesh").build();
 
+        IRepository envoyRepo = Repository.fromRepositoryArn(this, "envoyRepo", "arn:aws:ecr:us-west-2:840364872350:repository/aws-appmesh-envoy");
 
-
-        MeshContext meshContext = new MeshContext(this,mesh, serviceDomain, taskRole, executionRole, cluster);
+        MeshContext meshContext = new MeshContext(this,mesh, serviceDomain, taskRole, executionRole, cluster, envoyRepo);
 
         //
         // Create the service mesh
@@ -66,6 +68,12 @@ public class Mesh2Stack extends Stack {
 
         // name service
         VirtualService nameVirtualService = AppMeshComponentSetup.createServiceForNode(meshContext, nameVirtualNode, "namesvc");
+
+        // name 2 virtual node
+        VirtualNode name2VirtualNode = AppMeshComponentSetup.createVirtualNode(meshContext, "name2node");
+
+        // name 2 virtual service
+        VirtualService name2VirtualService = AppMeshComponentSetup.createServiceForNode(meshContext, nameVirtualNode, "name2svc");
 
         //greeting virtual node
 
@@ -79,6 +87,7 @@ public class Mesh2Stack extends Stack {
         // Add fargate services to tie virtual constructs to concrete implementations
         //
         FargateService namesvc = EcsServices.createNameService(meshContext);
+        FargateService name2svc = EcsServices.createName2Service(meshContext);
 
 
         //
@@ -97,7 +106,7 @@ public class Mesh2Stack extends Stack {
         applicationListener.addTargets("hello", AddApplicationTargetsProps.builder()
                 .port(80)
                 .targets(List.of(
-                       namesvc
+                       name2svc
                 ))
                 .healthCheck(software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck.builder()
                         .path("/health")
