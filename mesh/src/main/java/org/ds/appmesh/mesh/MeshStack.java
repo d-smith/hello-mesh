@@ -2,7 +2,6 @@ package org.ds.appmesh.mesh;
 
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.appmesh.*;
-import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.HealthCheck;
@@ -14,13 +13,11 @@ import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.PrivateHostedZone;
 import software.amazon.awscdk.services.route53.RecordTarget;
-import software.amazon.awscdk.services.route53.targets.Route53RecordTarget;
 import software.amazon.awscdk.services.servicediscovery.NamespaceType;
 import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 // import software.amazon.awscdk.Duration;
@@ -46,6 +43,11 @@ public class MeshStack extends Stack {
                                 .type(NamespaceType.DNS_PRIVATE)
                                 .build()
                 )
+                .build();
+
+        PrivateHostedZone appzone = PrivateHostedZone.Builder.create(this, "appzone")
+                .vpc(vpc)
+                .zoneName("appzone")
                 .build();
 
         Mesh mesh = Mesh.Builder.create(this, "hello-mesh").build();
@@ -97,6 +99,42 @@ public class MeshStack extends Stack {
         FargateAppMeshService greetingService = new FargateAppMeshService(this, "greeting",
                 cluster, mesh, taskRole, executionRole, greetingContainerDefinitionOpts, 8080);
 
+        //-------
+        // Try a router...
+        /*
+        VirtualRouter virtualRouter = VirtualRouter.Builder.create(this, "greeting-vr")
+                .mesh(mesh)
+                .listeners(
+                        List.of(
+                                VirtualRouterListener.http(8080)
+                        )
+                )
+                .build();
+
+        WeightedTarget greetingTarget = WeightedTarget.builder()
+                .virtualNode(greetingService.virtualNode)
+                .weight(100)
+                .build();
+
+        virtualRouter.addRoute("greeting-vr-route",
+                RouteBaseProps.builder()
+                        .routeName("route_greeting")
+                        .routeSpec(RouteSpec.http(
+                                HttpRouteSpecOptions.builder()
+                                        .weightedTargets(List.of(greetingTarget))
+                                        .build()
+                        ))
+                        .build());
+
+        VirtualService routedGreeting = VirtualService.Builder.create(this, "routed-greeting-svc")
+                .virtualServiceName("greetingsvc.appzone")
+                .virtualServiceProvider(VirtualServiceProvider.virtualRouter(virtualRouter))
+                .build();
+
+        */
+
+        //-------
+
         //Hello service
 
         ContainerDefinitionOptions helloContainerDefinitionsOpt = ContainerDefinitionOptions.builder()
@@ -113,8 +151,18 @@ public class MeshStack extends Stack {
         FargateAppMeshService helloService = new FargateAppMeshService(this,"hello",
                 cluster, mesh, taskRole, executionRole, helloContainerDefinitionsOpt, 8080);
 
+        /*
+        ARecord.Builder.create(this, "gsvcrec")
+                .zone(appzone)
+                .recordName("greetingsvc.appzone")
+                .target(RecordTarget.fromIpAddresses("10.10.10.10"))
+                .build();
+        */
+
         helloService.connectToMeshService(nameService);
         helloService.connectToMeshService(greetingService);
+        //helloService.connectRoutedSvcToMeshService(routedGreeting);
+
 
 
 

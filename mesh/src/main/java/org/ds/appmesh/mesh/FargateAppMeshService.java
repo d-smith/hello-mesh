@@ -39,6 +39,24 @@ public class FargateAppMeshService extends FargateVirtualNode {
 
     }
 
+    public void connectRoutedSvcToMeshService(VirtualService virtualService, FargateAppMeshService... fargateServices) {
+
+        this.virtualNode.addBackend(Backend.virtualService(virtualService));
+
+        for(FargateAppMeshService svc: fargateServices) {
+            this.fargateService.getConnections().allowTo(
+                    svc.fargateService,
+                    Port.tcp(8080),
+                    "Inbound traffic from the app mesh enabled " + serviceName
+            );
+
+        }
+
+
+
+
+
+    }
 
 
     public void connectVirtualRouterService(VirtualService vrService) {
