@@ -9,6 +9,7 @@ import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.servicediscovery.DnsRecordType;
 
 import java.awt.*;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -81,7 +82,7 @@ public class EcsServices {
                 .build();
     }
 
-    private static FargateService createService(MeshContext meshContext, String serviceName, String nodeName, String imageName) {
+    private static FargateService createService(MeshContext meshContext, String serviceName, String nodeName, String imageName, Map<String,String> appenv) {
         TaskDefinition taskDefinition = createTaskDefinition(meshContext, serviceName);
 
         ContainerDefinitionOptions nameContainerDefinitionOpts = ContainerDefinitionOptions.builder()
@@ -89,6 +90,7 @@ public class EcsServices {
                 .healthCheck(createContainerHealthCheck())
                 .memoryLimitMiB(512)
                 .logging(AwsLogDriver.Builder.create().streamPrefix(serviceName).build())
+                .environment(appenv == null? new HashMap<>() : appenv)
                 .build();
 
         ContainerDefinition nameContainer = taskDefinition.addContainer(serviceName + "cont", nameContainerDefinitionOpts);
@@ -113,18 +115,33 @@ public class EcsServices {
                                 .dnsRecordType(DnsRecordType.A)
                                 .dnsTtl(Duration.seconds(10))
                                 .failureThreshold(2)
-                                .name(serviceName + "." + meshContext.getServiceDomain())
+                                //.name(serviceName + "." + meshContext.getServiceDomain())
+                                .name(serviceName)
                                 .build()
                 )
                 .build();
     }
 
     public static FargateService createNameService(MeshContext meshContext) {
-        return createService(meshContext, "namesvc", "namenode", "dasmith/name");
+        return createService(meshContext, "namesvc",
+                "namenode", "dasmith/name", null);
     }
 
     public static FargateService createName2Service(MeshContext meshContext) {
-        return createService(meshContext, "name2svc", "name2node", "dasmith/name2");
+        return createService(meshContext, "name2svc",
+                "name2node", "dasmith/name2", null);
     }
 
+    public static FargateService createHelloService(MeshContext meshContext) {
+        return createService(meshContext, "hellosvc", "hellonode",
+                "dasmith/hello",
+                Map.of(
+                        "NAME_ENDPOINT", "http://nameteller." + meshContext.getServiceDomain() + ":8080",
+                        "GREETING_ENDPOINT", "http://greeting." + meshContext.getServiceDomain() + ":8080"
+                ));
+    }
+
+    public static FargateService createFakeNameteller(MeshContext meshContext) {
+        return createService(meshContext, "nameteller", "nameteller", "dasmith/hello",null);
+    }
 }
